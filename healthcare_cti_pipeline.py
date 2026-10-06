@@ -13,6 +13,7 @@ import re
 import sys
 import time
 import uuid
+from collections import Counter
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -605,8 +606,13 @@ def _get_actionability(
     if getattr(cfg, "SKIP_ACTIONABILITY", False):
         return None, None, None, None
 
+    # Promoted observables come back from the promote mutation without a
+    # pattern, so fall back to the observable value stored at promotion.
     pattern = (indicator.get("pattern") or "").strip()
-    has_ioc = bool(pattern) and pattern != "[x-tlsh:hash = '']"
+    has_ioc = (
+        (bool(pattern) and pattern != "[x-tlsh:hash = '']")
+        or bool(indicator.get("_source_observable_value"))
+    )
 
     has_ttp        = "Attack-Pattern"   in related_types
     has_mitigation = "Course-Of-Action" in related_types
@@ -628,6 +634,12 @@ def _get_actionability(
 # ==============================================================================
 #  STEP 7 - NORMALISE TO A COMMON SHAPE
 # ==============================================================================
+
+def _source_name(indicator: dict[str, Any]) -> str:
+    """Name of the source Identity that created the indicator (e.g. the feed)."""
+    created_by = indicator.get("createdBy") or {}
+    return created_by.get("name") or "unknown"
+
 
 def normalise_indicator(
     indicator: dict[str, Any],
@@ -881,10 +893,14 @@ def sanitise_indicator(
     )
 
     if not raw_value:
+        log.warning("Dropped %s indicator %s: no observable value to hash.",
+                    obs_type, indicator.get("id"))
         return None
 
     tlsh_digest = _tlsh_hash_value(raw_value, cfg)
     if tlsh_digest is None:
+        log.warning("Dropped %s indicator %s: TLSH could not hash the value.",
+                    obs_type, indicator.get("id"))
         return None
 
     now = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
@@ -1045,8 +1061,9 @@ def print_summary(
     promoted_count: int,
     epss_vuln_count: int,
     sanitised_count: int,
-    alienvault_in_output: int,
-    promoted_in_output: int,
+    native_by_source: dict[str, int],
+    output_by_source: dict[str, int],
+    dropped_by_type: dict[str, int],
     bundle_path: Path,
     cfg: Config,
     quality_report: dict[str, Any] | None = None,
@@ -1068,7 +1085,9 @@ def print_summary(
     print(f"  Actionability       : {'disabled' if cfg.SKIP_ACTIONABILITY else 'enabled'}")
 
     print("\n  INPUT")
-    print(f"    AlienVault indicators (native) : {native_count:>6}")
+    print(f"    Native indicators              : {native_count:>6}")
+    for src, n in sorted(native_by_source.items()):
+        print(f"      {src[:28]:<28} : {n:>6}")
     print(f"    Raw observables (SCOs)         : {raw_obs_count:>6}")
     print(f"    Total input objects            : {total_input:>6}")
 
@@ -1076,10 +1095,13 @@ def print_summary(
     print(f"    Observables promoted           : {promoted_count:>6}")
     print(f"    CVEs above composite threshold : {epss_vuln_count:>6}")
     print(f"    TLSH-sanitised indicators      : {sanitised_count:>6}")
+    print(f"    Dropped at sanitisation        : {sum(dropped_by_type.values()):>6}")
+    for obs_type, n in sorted(dropped_by_type.items()):
+        print(f"      {obs_type[:28]:<28} : {n:>6}")
 
     print("\n  OUTPUT BUNDLE")
-    print(f"    From AlienVault (sanitised)    : {alienvault_in_output:>6}")
-    print(f"    From promotion (sanitised)     : {promoted_in_output:>6}")
+    for src, n in sorted(output_by_source.items()):
+        print(f"    From {src[:25]:<25} : {n:>6}")
     print(f"    Vulnerability SDOs (EPSS)      : {epss_vuln_count:>6}")
     print(f"    Total indicators in bundle     : {sanitised_count:>6}")
     print(f"    Volume reduction               : {reduction_pct:>5.1f}%")
@@ -1204,12 +1226,14 @@ def main() -> int:
     native_normalised = []
     native_count = 0
     native_ids = set()
+    native_by_source: Counter[str] = Counter()
     quality_report: dict[str, Any] = {}
 
     if not args.skip_native:
         native_indicators = fetch_native_indicators(client, cfg)
         native_count      = len(native_indicators)
         native_ids        = {ind.get("id") for ind in native_indicators}
+        native_by_source  = Counter(_source_name(ind) for ind in native_indicators)
 
         # Score EVERY fetched indicator (before sector-relevance filtering),
         # so we can compare quality before vs. after filtering - proof the
@@ -1229,7 +1253,7 @@ def main() -> int:
                 "actionability_score": act_score,
             })
             if is_relevant:
-                native_normalised.append(normalise_indicator(ind, source_tag="alienvault"))
+                native_normalised.append(normalise_indicator(ind, source_tag=_source_name(ind)))
 
         quality_report = _build_quality_comparison(all_scored)
     else:
@@ -1255,17 +1279,16 @@ def main() -> int:
 
     all_indicators                = native_normalised + promoted_normalised
     sanitised: list[dict]         = []
-    alienvault_count = promoted_count_out = 0
+    output_by_source: Counter[str] = Counter()
+    dropped_by_type: Counter[str]  = Counter()
 
     for ind in all_indicators:
         result = sanitise_indicator(ind, cfg, client=client)
         if result is None:
+            dropped_by_type[ind.get("_source_observable_type") or "Unknown"] += 1
             continue
         sanitised.append(result)
-        if result.get("x_pipeline_source") == "alienvault":
-            alienvault_count += 1
-        else:
-            promoted_count_out += 1
+        output_by_source[result.get("x_pipeline_source") or "unknown"] += 1
 
     if not sanitised and not epss_scores:
         log.warning("Nothing to export. Check connectors have completed ingestion.")
@@ -1282,8 +1305,9 @@ def main() -> int:
         promoted_count       = len(promoted_normalised),
         epss_vuln_count      = len(epss_scores),
         sanitised_count      = len(sanitised),
-        alienvault_in_output = alienvault_count,
-        promoted_in_output   = promoted_count_out,
+        native_by_source     = dict(native_by_source),
+        output_by_source     = dict(output_by_source),
+        dropped_by_type      = dict(dropped_by_type),
         bundle_path          = bundle_path,
         cfg                  = cfg,
         quality_report       = quality_report,
