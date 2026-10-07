@@ -61,12 +61,6 @@ class Config:
 
     COMPOSITE_THRESHOLD: float = float(os.getenv("COMPOSITE_THRESHOLD", "0.10"))
 
-    # -- Observable types eligible for promotion -------------------------------
-    PROMOTABLE_TYPES: set[str] = {
-        "IPv4-Addr", "IPv6-Addr", "Domain-Name",
-        "Url", "StixFile", "Email-Addr", "Hostname",
-    }
-
     # -- Sector filter keywords ------------------------------------------------
     # Two lists, kept separate so the run summary can report which one matched.
     # Sector: who is targeted. "healthcare" and "pharmaceutical(s)" come from the
@@ -164,7 +158,7 @@ def connect_opencti(cfg: Config) -> OpenCTIApiClient:
 
 
 # ==============================================================================
-#  STEP 2A - FETCH NATIVE INDICATORS
+#  STEP 2 - FETCH NATIVE INDICATORS
 # ==============================================================================
 
 def fetch_native_indicators(
@@ -241,68 +235,6 @@ def fetch_native_indicators(
 
 
 # ==============================================================================
-#  STEP 2B - FETCH RAW OBSERVABLES
-# ==============================================================================
-
-def fetch_all_observables(
-    client: OpenCTIApiClient,
-    cfg: Config,
-) -> list[dict[str, Any]]:
-    limit = cfg.FETCH_LIMIT
-    if limit is not None:
-        log.info("Fetching raw Observables from OpenCTI (limit=%d) ...", limit)
-    else:
-        log.info("Fetching raw Observables from OpenCTI (page size=%d) ...", cfg.PAGE_SIZE)
-    observables: list[dict] = []
-    after_cursor: str | None = None
-    page = 0
-
-    while True:
-        page += 1
-        page_size = cfg.PAGE_SIZE
-        if limit is not None:
-            remaining = limit - len(observables)
-            if remaining <= 0:
-                break
-            page_size = min(page_size, remaining)
-
-        result = client.stix_cyber_observable.list(
-            first=page_size,
-            after=after_cursor,
-            withPagination=True,
-            getAll=False,
-            customAttributes="""
-                id
-                entity_type
-                observable_value
-                objectLabel { value }
-                x_opencti_description
-            """
-        )
-
-        if result is None:
-            break
-
-        entities   = result.get("entities", result) if isinstance(result, dict) else result
-        pagination = result.get("pagination", {})   if isinstance(result, dict) else {}
-
-        if not entities:
-            break
-
-        observables.extend(entities)
-        log.info("  Page %d: %d observables (total: %d)", page, len(entities), len(observables))
-
-        if limit is not None and len(observables) >= limit:
-            break
-
-        if not pagination.get("hasNextPage") or not pagination.get("endCursor"):
-            break
-        after_cursor = pagination["endCursor"]
-
-    return observables
-
-
-# ==============================================================================
 #  STEP 3 - SECTOR RELEVANCE FILTER
 # ==============================================================================
 
@@ -336,96 +268,7 @@ def is_healthcare_relevant(obj: dict[str, Any], cfg: Config) -> bool:
 
 
 # ==============================================================================
-#  STEP 4 - PROMOTE OBSERVABLES TO INDICATORS
-# ==============================================================================
-
-def promote_observables_to_indicators(
-    client: OpenCTIApiClient,
-    observables: list[dict[str, Any]],
-    native_indicator_ids: set[str],
-    cfg: Config,
-    dry_run: bool = False,
-) -> list[dict[str, Any]]:
-    promoted: list[dict] = []
-    skipped_type = skipped_sector = skipped_duplicate = errors = 0
-
-    log.info("Promoting Observables to Indicators (candidates: %d) ...", len(observables))
-
-    mutation = """
-        mutation PromoteObservable($id: ID!) {
-            stixCyberObservableEdit(id: $id) {
-                promoteToIndicator {
-                    id
-                    standard_id
-                    entity_type
-                    parent_types
-                    name
-                    pattern
-                    pattern_type
-                    valid_from
-                    createdBy {
-                        ... on Identity {
-                            id
-                            name
-                            x_opencti_reliability
-                        }
-                    }
-                }
-            }
-        }
-    """
-
-    for obs in observables:
-        obs_type = obs.get("entity_type", "")
-        obs_id   = obs.get("id", "")
-        obs_val  = obs.get("observable_value", obs.get("value", "<unknown>"))
-
-        if obs_type not in cfg.PROMOTABLE_TYPES:
-            skipped_type += 1
-            continue
-
-        if not is_healthcare_relevant(obs, cfg):
-            skipped_sector += 1
-            continue
-
-        if obs.get("indicators") or obs.get("indicatorsIds"):
-            skipped_duplicate += 1
-            continue
-
-        if dry_run:
-            stub = dict(obs)
-            stub["_source_observable_value"] = obs_val
-            stub["_source_observable_type"]  = obs_type
-            stub["_source"]                  = "promoted"
-            promoted.append(stub)
-            continue
-
-        try:
-            result    = client.query(mutation, {"id": obs_id})
-            indicator = result["data"]["stixCyberObservableEdit"]["promoteToIndicator"]
-
-            if indicator:
-                indicator["_source_observable_value"] = obs_val
-                indicator["_source_observable_type"]  = obs_type
-                indicator["_source"]                  = "promoted"
-                promoted.append(indicator)
-            else:
-                errors += 1
-        except Exception as exc:
-            err_str = str(exc).lower()
-            if "already exists" in err_str or "duplicate" in err_str:
-                skipped_duplicate += 1
-            else:
-                log.warning("Promotion failed for %s %s: %s", obs_type, obs_id, exc)
-                errors += 1
-
-    log.info("Promotion done. Promoted=%d Skip(type)=%d Skip(sector)=%d Skip(duplicate)=%d Errors=%d",
-        len(promoted), skipped_type, skipped_sector, skipped_duplicate, errors)
-    return promoted
-
-
-# ==============================================================================
-#  STEP 5 - DERIVE ADMIRALTY SOURCE RELIABILITY
+#  STEP 4 - DERIVE ADMIRALTY SOURCE RELIABILITY
 # ==============================================================================
 def _get_admiralty(indicator: dict[str, Any], cfg: Config) -> tuple[str | None, float | None]:
     """
@@ -465,7 +308,7 @@ def _get_admiralty(indicator: dict[str, Any], cfg: Config) -> tuple[str | None, 
 
 
 # ==============================================================================
-#  STEP 6 - DERIVE ACTIONABILITY (IOC / TTP / MITIGATION)
+#  STEP 5 - DERIVE ACTIONABILITY (IOC / TTP / MITIGATION)
 # ==============================================================================
 
 def _fetch_related_entity_types(
@@ -484,7 +327,7 @@ def _fetch_related_entity_types(
     (technique) rather than directly to the Indicator.
 
     One extra API call per indicator - can be disabled via cfg.FETCH_RELATIONSHIPS
-    for faster/cheaper dry-runs, at the cost of TTP/mitigation always reading False.
+    for faster/cheaper test runs, at the cost of TTP/mitigation always reading False.
     """
     if not getattr(cfg, "FETCH_RELATIONSHIPS", True):
         return set(), set()
@@ -620,10 +463,8 @@ def _get_actionability(
     if getattr(cfg, "SKIP_ACTIONABILITY", False):
         return None, None, None, None
 
-    # Dry-run promotion stubs have no pattern, so fall back to the observable
-    # value stored at promotion.
     pattern = (indicator.get("pattern") or "").strip()
-    has_ioc = bool(pattern) or bool(indicator.get("_source_observable_value"))
+    has_ioc = bool(pattern)
 
     has_ttp        = "Attack-Pattern"   in related_types
     has_mitigation = "Course-Of-Action" in related_types
@@ -643,7 +484,7 @@ def _get_actionability(
     return round(score, 4), has_ioc, has_ttp, has_mitigation
 
 # ==============================================================================
-#  STEP 7 - NORMALISE TO A COMMON SHAPE
+#  STEP 6 - NORMALISE TO A COMMON SHAPE
 # ==============================================================================
 
 def _source_name(indicator: dict[str, Any]) -> str:
@@ -695,7 +536,7 @@ def normalise_indicator(
 
 
 # ==============================================================================
-#  STEP 8 - COMPOSITE VULNERABILITY SCORING
+#  STEP 7 - COMPOSITE VULNERABILITY SCORING
 # ==============================================================================
 
 def _fetch_kev_set(cfg: Config) -> set[str]:
@@ -868,32 +709,8 @@ def enrich_vulnerabilities_with_epss(
 
 
 # ==============================================================================
-#  STEP 9 - BUILD OUTPUT INDICATORS
+#  STEP 8 - BUILD OUTPUT INDICATORS
 # ==============================================================================
-
-# STIX pattern paths for observable types whose value maps to one property.
-# Used only for dry-run promotion stubs, which have no pattern of their own.
-_PATTERN_PATHS: dict[str, str] = {
-    "IPv4-Addr":   "ipv4-addr:value",
-    "IPv6-Addr":   "ipv6-addr:value",
-    "Domain-Name": "domain-name:value",
-    "Url":         "url:value",
-    "Email-Addr":  "email-addr:value",
-    "Hostname":    "hostname:value",
-}
-
-
-def _pattern_for(indicator: dict[str, Any]) -> str | None:
-    pattern = (indicator.get("pattern") or "").strip()
-    if pattern:
-        return pattern
-    path  = _PATTERN_PATHS.get(indicator.get("_source_observable_type") or "")
-    value = indicator.get("_source_observable_value")
-    if not path or not value:
-        return None
-    escaped = value.replace("\\", "\\\\").replace("'", "\\'")
-    return f"[{path} = '{escaped}']"
-
 
 def build_output_indicator(
     indicator: dict[str, Any],
@@ -915,8 +732,8 @@ def build_output_indicator(
         indicator, related_types, attack_pattern_ids, client, cfg
     )
 
-    pattern = _pattern_for(indicator)
-    if pattern is None:
+    pattern = (indicator.get("pattern") or "").strip()
+    if not pattern:
         log.warning("Dropped %s indicator %s: no STIX pattern available.",
                     obs_type, indicator.get("id"))
         return None
@@ -961,7 +778,7 @@ def build_output_indicator(
 
 
 # ==============================================================================
-#  STEP 10 - ASSEMBLE STIX 2.1 BUNDLE
+#  STEP 9 - ASSEMBLE STIX 2.1 BUNDLE
 # ==============================================================================
 
 def build_stix_bundle(
@@ -1022,7 +839,7 @@ def export_bundle(bundle: dict[str, Any], cfg: Config) -> Path:
 
 
 # ==============================================================================
-#  STEP 11 - STIX 2.1 VALIDATION
+#  STEP 10 - STIX 2.1 VALIDATION
 # ==============================================================================
 
 def validate_bundle(bundle_path: Path) -> bool:
@@ -1050,13 +867,11 @@ def validate_bundle(bundle_path: Path) -> bool:
 
 
 # ==============================================================================
-#  STEP 12 - SUMMARY OUTPUT
+#  STEP 11 - SUMMARY OUTPUT
 # ==============================================================================
 
 def print_summary(
     native_count: int,
-    raw_obs_count: int,
-    promoted_count: int,
     epss_vuln_count: int,
     indicator_count: int,
     native_by_source: dict[str, int],
@@ -1068,7 +883,7 @@ def print_summary(
 ) -> None:
     # Indicators in vs. indicators out. Vulnerabilities are not sector-filtered,
     # so they are left out of this figure.
-    total_input   = native_count + raw_obs_count
+    total_input   = native_count
     reduction_pct = (
         100.0 * (1.0 - indicator_count / total_input)
         if total_input > 0 else 0.0
@@ -1088,11 +903,8 @@ def print_summary(
     print(f"    Native indicators              : {native_count:>6}")
     for src, n in sorted(native_by_source.items()):
         print(f"      {src[:28]:<28} : {n:>6}")
-    print(f"    Raw observables (SCOs)         : {raw_obs_count:>6}")
-    print(f"    Total input objects            : {total_input:>6}")
 
     print("\n  PROCESSING")
-    print(f"    Observables promoted           : {promoted_count:>6}")
     print(f"    CVEs above composite threshold : {epss_vuln_count:>6}")
     print(f"    Dropped (no STIX pattern)      : {sum(dropped_by_type.values()):>6}")
     for obs_type, n in sorted(dropped_by_type.items()):
@@ -1136,8 +948,7 @@ def print_summary(
         for reason in ("sector", "threat", "unlabelled"):
             print(f"      {reason + ' keyword' if reason != 'unlabelled' else 'no labels (soft mode)':<28} : "
                   f"{qr['after_by_reason'].get(reason, 0):>6}")
-        print("    (native indicators only; vulnerabilities are not sector-filtered,")
-        print("     promoted observables are filtered but have no before score)")
+        print("    (vulnerabilities are not sector-filtered)")
 
     print(f"\n  Output -> {bundle_path}")
     print("=" * W + "\n")
@@ -1150,8 +961,6 @@ def print_summary(
 
 def parse_args() -> argparse.Namespace:
     p = argparse.ArgumentParser(description="Healthcare CTI pipeline")
-    p.add_argument("--dry-run",        action="store_true",
-                   help="Preview without writing to OpenCTI.")
     p.add_argument("--threshold", type=float, default=None,
                    metavar="T",
                    help="Minimum composite score (0.0-1.0) a CVE must reach to be included.")
@@ -1159,8 +968,6 @@ def parse_args() -> argparse.Namespace:
                    help="Override output directory.")
     p.add_argument("--strict-filter",  action="store_true",
                    help="Drop unlabelled objects (strict healthcare filter).")
-    p.add_argument("--skip-promote",   action="store_true",
-                   help="Skip SCO promotion (use only native Indicators).")
     p.add_argument("--skip-native", action="store_true",
                    help="Skip native indicators (e.g. AlienVault).")
     p.add_argument("--skip-admiralty", action="store_true",
@@ -1232,9 +1039,6 @@ def main() -> int:
         cfg.FETCH_RELATIONSHIPS = False
         log.info("Relationship fetch disabled (--no-relationships) - TTP/mitigation will default to False.")
 
-    if args.dry_run:
-        log.info("*** DRY-RUN - no mutations sent to OpenCTI ***")
-
     token = cfg.OPENCTI_TOKEN
     if not token or token == "REPLACE_WITH_YOUR_TOKEN" or len(token) < 20:
         log.error("OPENCTI_TOKEN is missing or invalid.")
@@ -1244,14 +1048,12 @@ def main() -> int:
 
     native_normalised = []
     native_count = 0
-    native_ids = set()
     native_by_source: Counter[str] = Counter()
     quality_report: dict[str, Any] = {}
 
     if not args.skip_native:
         native_indicators = fetch_native_indicators(client, cfg)
         native_count      = len(native_indicators)
-        native_ids        = {ind.get("id") for ind in native_indicators}
         native_by_source  = Counter(_source_name(ind) for ind in native_indicators)
 
         # Score EVERY fetched indicator (before sector-relevance filtering),
@@ -1278,26 +1080,10 @@ def main() -> int:
         quality_report = _build_quality_comparison(all_scored)
     else:
         log.info("Native indicators skipped (--skip-native).")
-        
-    promoted_normalised: list[dict] = []
-    raw_obs_count = 0
-
-    if not args.skip_promote:
-        raw_observables = fetch_all_observables(client, cfg)
-        raw_obs_count   = len(raw_observables)
-        promoted_raw    = promote_observables_to_indicators(
-            client, raw_observables, native_ids, cfg, dry_run=args.dry_run
-        )
-        promoted_normalised = [
-            normalise_indicator(ind, source_tag="promoted")
-            for ind in promoted_raw
-        ]
-    else:
-        log.info("Observable promotion skipped (--skip-promote).")
 
     epss_scores = enrich_vulnerabilities_with_epss(client, cfg)
 
-    all_indicators                 = native_normalised + promoted_normalised
+    all_indicators                 = native_normalised
     output_indicators: list[dict]  = []
     output_by_source: Counter[str] = Counter()
     dropped_by_type: Counter[str]  = Counter()
@@ -1321,8 +1107,6 @@ def main() -> int:
 
     print_summary(
         native_count         = native_count,
-        raw_obs_count        = raw_obs_count,
-        promoted_count       = len(promoted_normalised),
         epss_vuln_count      = len(epss_scores),
         indicator_count      = len(output_indicators),
         native_by_source     = dict(native_by_source),
