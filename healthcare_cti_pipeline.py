@@ -1,6 +1,6 @@
 """
 Healthcare CTI pipeline - personal working script.
-Ingest -> filter -> score (urgency/reliability/actionability) -> sanitise -> export.
+Ingest -> filter -> score (urgency/reliability/actionability) -> export.
 """
 
 from __future__ import annotations
@@ -19,7 +19,6 @@ from pathlib import Path
 from typing import Any
 
 import requests
-import tlsh
 from dotenv import load_dotenv
 from pycti import OpenCTIApiClient
 from stix2 import parse as stix2_parse
@@ -68,16 +67,22 @@ class Config:
         "Url", "StixFile", "Email-Addr", "Hostname",
     }
 
-    # -- Healthcare sector keywords --------------------------------------------
-    HEALTHCARE_LABELS: set[str] = {
-        "healthcare", "health-sector", "health", "iomt", "medical",
-        "hospital", "clinic", "pharmaceutical", 
-        "ransomware", "phishing", "credential-theft"
+    # -- Sector filter keywords ------------------------------------------------
+    # Two lists, kept separate so the run summary can report which one matched.
+    # Sector: who is targeted. "healthcare" and "pharmaceutical(s)" come from the
+    # STIX 2.1 industry-sector vocabulary (OASIS, section 10.11); "hospital" and
+    # "medical device" are target types in ENISA Threat Landscape: Health
+    # Sector (2023), p.10 and p.16.
+    SECTOR_KEYWORDS: set[str] = {
+        "healthcare", "pharmaceutical", "hospital", "medical device",
+    }
+    # Threat type: what kind of attack. Ransomware (54% of incidents, p.3/p.13)
+    # and phishing (social engineering, section 2.5, p.14-15) are prime threats
+    # to the health sector in ENISA Threat Landscape: Health Sector (2023).
+    THREAT_KEYWORDS: set[str] = {
+        "ransomware", "phishing",
     }
     STRICT_SECTOR_FILTER: bool = False
-
-    # -- TLSH ------------------------------------------------------------------
-    TLSH_MIN_INPUT_BYTES: int = 50
 
     # -- External APIs ---------------------------------------------------------
     EPSS_API_BASE: str     = "https://api.first.org/data/v1/epss"
@@ -97,7 +102,7 @@ class Config:
 
     # -- Output ----------------------------------------------------------------
     OUTPUT_DIR: Path = Path(os.getenv("OUTPUT_DIR", "./output"))
-    BUNDLE_FILENAME: str = "sanitised_healthcare_cti_{ts}.json"
+    BUNDLE_FILENAME: str = "healthcare_cti_{ts}.json"
 
     # -- NATO Admiralty System source reliability ------------------------------
     # Used exclusively for Indicators (Intelligence), not Vulnerabilities (Facts).
@@ -140,14 +145,6 @@ class Config:
     MITIGATION_WEIGHT: float = float(os.getenv("MITIGATION_WEIGHT", "0.30"))
 
     RELATIONSHIP_FETCH_LIMIT: int = 50
-
-    # -- OPSEC: metadata fields to strip before export -------------------------
-    STRIP_FIELDS: set[str] = {
-        "created_by_ref", "external_references",
-        "x_opencti_aliases", "x_opencti_stix_ids",
-        "x_opencti_workflow_id", "x_opencti_linked_to",
-        "connectors", "connector_id",
-    }
 
 
 # ==============================================================================
@@ -200,8 +197,12 @@ def fetch_native_indicators(
             getAll=False,
             customAttributes="""
                 id
+                standard_id
                 name
                 pattern
+                pattern_type
+                created
+                modified
                 indicator_types
                 valid_from
                 confidence
@@ -305,10 +306,12 @@ def fetch_all_observables(
 #  STEP 3 - SECTOR RELEVANCE FILTER
 # ==============================================================================
 
-def is_healthcare_relevant(obj: dict[str, Any], cfg: Config) -> bool:
-    if not cfg.HEALTHCARE_LABELS:
-        return True
-
+def filter_reason(obj: dict[str, Any], cfg: Config) -> str | None:
+    """
+    Why an object passes the sector filter: "sector" (a sector keyword
+    matched), "threat" (only a threat-type keyword matched) or "unlabelled"
+    (no labels, let through in soft mode). None means it is filtered out.
+    """
     labels: list[dict] = obj.get("objectLabel", []) or []
     label_values = {lbl.get("value", "").lower() for lbl in labels}
     combined_text = " ".join([
@@ -316,14 +319,20 @@ def is_healthcare_relevant(obj: dict[str, Any], cfg: Config) -> bool:
         (obj.get("pattern") or ""),
     ]).lower()
 
+    def _matches(keywords: set[str]) -> bool:
+        return any(k in label_values or k in combined_text for k in keywords)
+
+    if _matches(cfg.SECTOR_KEYWORDS):
+        return "sector"
+    if _matches(cfg.THREAT_KEYWORDS):
+        return "threat"
     if not label_values and not cfg.STRICT_SECTOR_FILTER:
-        return True 
+        return "unlabelled"
+    return None
 
-    for keyword in cfg.HEALTHCARE_LABELS:
-        if keyword in label_values or keyword in combined_text:
-            return True
 
-    return False
+def is_healthcare_relevant(obj: dict[str, Any], cfg: Config) -> bool:
+    return filter_reason(obj, cfg) is not None
 
 
 # ==============================================================================
@@ -345,11 +354,15 @@ def promote_observables_to_indicators(
     mutation = """
         mutation PromoteObservable($id: ID!) {
             stixCyberObservableEdit(id: $id) {
-                promote {
+                promoteToIndicator {
                     id
                     standard_id
                     entity_type
                     parent_types
+                    name
+                    pattern
+                    pattern_type
+                    valid_from
                     createdBy {
                         ... on Identity {
                             id
@@ -389,7 +402,7 @@ def promote_observables_to_indicators(
 
         try:
             result    = client.query(mutation, {"id": obs_id})
-            indicator = result["data"]["stixCyberObservableEdit"]["promote"]
+            indicator = result["data"]["stixCyberObservableEdit"]["promoteToIndicator"]
 
             if indicator:
                 indicator["_source_observable_value"] = obs_val
@@ -403,6 +416,7 @@ def promote_observables_to_indicators(
             if "already exists" in err_str or "duplicate" in err_str:
                 skipped_duplicate += 1
             else:
+                log.warning("Promotion failed for %s %s: %s", obs_type, obs_id, exc)
                 errors += 1
 
     log.info("Promotion done. Promoted=%d Skip(type)=%d Skip(sector)=%d Skip(duplicate)=%d Errors=%d",
@@ -606,13 +620,10 @@ def _get_actionability(
     if getattr(cfg, "SKIP_ACTIONABILITY", False):
         return None, None, None, None
 
-    # Promoted observables come back from the promote mutation without a
-    # pattern, so fall back to the observable value stored at promotion.
+    # Dry-run promotion stubs have no pattern, so fall back to the observable
+    # value stored at promotion.
     pattern = (indicator.get("pattern") or "").strip()
-    has_ioc = (
-        (bool(pattern) and pattern != "[x-tlsh:hash = '']")
-        or bool(indicator.get("_source_observable_value"))
-    )
+    has_ioc = bool(pattern) or bool(indicator.get("_source_observable_value"))
 
     has_ttp        = "Attack-Pattern"   in related_types
     has_mitigation = "Course-Of-Action" in related_types
@@ -658,6 +669,7 @@ def normalise_indicator(
                 ("ipv4-addr", "IPv4-Addr"), ("ipv6-addr", "IPv6-Addr"),
                 ("domain-name", "Domain-Name"), ("url:", "Url"),
                 ("file:", "StixFile"), ("email-addr", "Email-Addr"),
+                ("hostname:", "Hostname"),
             ]:
                 if prefix in pattern:
                     obs_type = name
@@ -856,27 +868,38 @@ def enrich_vulnerabilities_with_epss(
 
 
 # ==============================================================================
-#  STEP 9 - TLSH SANITISATION ENGINE
+#  STEP 9 - BUILD OUTPUT INDICATORS
 # ==============================================================================
 
-def _tlsh_hash_value(raw_value: str, cfg: Config) -> str | None:
-    raw_bytes = raw_value.encode("utf-8")
-    if len(raw_bytes) < cfg.TLSH_MIN_INPUT_BYTES:
-        repeat    = (cfg.TLSH_MIN_INPUT_BYTES // len(raw_bytes)) + 2
-        raw_bytes = (raw_value * repeat).encode("utf-8")[: cfg.TLSH_MIN_INPUT_BYTES * 2]
-    try:
-        h = tlsh.hash(raw_bytes)
-        return h if (h and h != "TNULL") else None
-    except Exception:
+# STIX pattern paths for observable types whose value maps to one property.
+# Used only for dry-run promotion stubs, which have no pattern of their own.
+_PATTERN_PATHS: dict[str, str] = {
+    "IPv4-Addr":   "ipv4-addr:value",
+    "IPv6-Addr":   "ipv6-addr:value",
+    "Domain-Name": "domain-name:value",
+    "Url":         "url:value",
+    "Email-Addr":  "email-addr:value",
+    "Hostname":    "hostname:value",
+}
+
+
+def _pattern_for(indicator: dict[str, Any]) -> str | None:
+    pattern = (indicator.get("pattern") or "").strip()
+    if pattern:
+        return pattern
+    path  = _PATTERN_PATHS.get(indicator.get("_source_observable_type") or "")
+    value = indicator.get("_source_observable_value")
+    if not path or not value:
         return None
+    escaped = value.replace("\\", "\\\\").replace("'", "\\'")
+    return f"[{path} = '{escaped}']"
 
 
-def sanitise_indicator(
+def build_output_indicator(
     indicator: dict[str, Any],
     cfg: Config,
     client: OpenCTIApiClient | None = None,
 ) -> dict[str, Any] | None:
-    raw_value = indicator.get("_source_observable_value", "")
     obs_type  = indicator.get("_source_observable_type", "Unknown")
     source    = indicator.get("_source", "unknown")
 
@@ -892,67 +915,49 @@ def sanitise_indicator(
         indicator, related_types, attack_pattern_ids, client, cfg
     )
 
-    if not raw_value:
-        log.warning("Dropped %s indicator %s: no observable value to hash.",
-                    obs_type, indicator.get("id"))
-        return None
-
-    tlsh_digest = _tlsh_hash_value(raw_value, cfg)
-    if tlsh_digest is None:
-        log.warning("Dropped %s indicator %s: TLSH could not hash the value.",
+    pattern = _pattern_for(indicator)
+    if pattern is None:
+        log.warning("Dropped %s indicator %s: no STIX pattern available.",
                     obs_type, indicator.get("id"))
         return None
 
     now = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
-    pipeline_id = "identity--" + str(
-        uuid.uuid5(uuid.NAMESPACE_DNS, "healthcare-cti-pipeline")
-    )
+    stix_id = indicator.get("standard_id") or ""
+    if not stix_id.startswith("indicator--"):
+        stix_id = f"indicator--{uuid.uuid4()}"
+    labels = [lbl.get("value") for lbl in indicator.get("objectLabel") or [] if lbl.get("value")]
 
-    sanitised: dict[str, Any] = {
-        "type":         "indicator",
-        "spec_version": "2.1",
-        "id":           f"indicator--{uuid.uuid4()}",
-        "name":         f"TLSH-sanitised {obs_type} indicator",
-        "description": (
-            f"OPSEC-safe indicator.  Observable type: {obs_type}.  "
-            f"Behavioural signature preserved via TLSH; "
-            f"source-identifying value and metadata destroyed."
-        ),
-        "pattern":      f"[x-tlsh:hash = '{tlsh_digest}']",
-        "pattern_type": "stix",
-        "valid_from":   indicator.get("valid_from") or now,
+    output: dict[str, Any] = {
+        "type":            "indicator",
+        "spec_version":    "2.1",
+        "id":              stix_id,
+        "name":            indicator.get("name") or f"{obs_type} indicator",
+        "pattern":         pattern,
+        "pattern_type":    indicator.get("pattern_type") or "stix",
+        "valid_from":      indicator.get("valid_from") or now,
         "indicator_types": indicator.get("indicator_types") or ["malicious-activity"],
-        "confidence":   indicator.get("confidence") or 50,
-        "labels": ["healthcare", "opsec-sanitised", "tlsh-abstracted"],
-        "x_tlsh_digest":              tlsh_digest,
-        "x_original_observable_type": obs_type,
-        "x_pipeline_source":          source,
-        "x_opencti_score":            indicator.get("x_opencti_score"),
-        "object_marking_refs": [
-            "marking-definition--34098fce-860f-48ae-8e50-ebd3cc5e41da"
-        ],
-        "created":        now,
-        "modified":       now,
-        "created_by_ref": pipeline_id,
+        "confidence":      indicator.get("confidence") or 50,
+        "labels":          labels or None,
+        "created":         indicator.get("created") or now,
+        "modified":        indicator.get("modified") or now,
+        "x_observable_type": obs_type,
+        "x_pipeline_source": source,
+        "x_opencti_score":   indicator.get("x_opencti_score"),
     }
 
     # Conditional inclusion of Admiralty grading
     if adm_grade is not None and adm_score is not None:
-        sanitised["x_admiralty_grade"] = adm_grade
-        sanitised["x_admiralty_score"] = adm_score
+        output["x_admiralty_grade"] = adm_grade
+        output["x_admiralty_score"] = adm_score
 
     # Conditional inclusion of actionability scoring
     if act_score is not None:
-        sanitised["x_actionability_score"]     = act_score
-        sanitised["x_ioc_present"]             = has_ioc
-        sanitised["x_ttp_linked"]              = has_ttp
-        sanitised["x_mitigation_linked"]       = has_mitigation
+        output["x_actionability_score"] = act_score
+        output["x_ioc_present"]         = has_ioc
+        output["x_ttp_linked"]          = has_ttp
+        output["x_mitigation_linked"]   = has_mitigation
 
-    for key in list(sanitised.keys()):
-        if key.startswith("_") or key in cfg.STRIP_FIELDS:
-            del sanitised[key]
-
-    return sanitised
+    return {k: v for k, v in output.items() if v is not None}
 
 
 # ==============================================================================
@@ -960,7 +965,7 @@ def sanitise_indicator(
 # ==============================================================================
 
 def build_stix_bundle(
-    sanitised_indicators: list[dict[str, Any]],
+    output_indicators: list[dict[str, Any]],
     epss_scores: dict[str, float],
     cfg: Config,
 ) -> dict[str, Any]:
@@ -972,15 +977,11 @@ def build_stix_bundle(
     pipeline_identity = {
         "type": "identity", "spec_version": "2.1", "id": pipeline_id,
         "name": "Healthcare CTI Pipeline (CYBR7901)", "identity_class": "system",
-        "description": "EPSS-prioritised, TLSH-sanitised CTI pipeline v2.1.",
+        "description": (
+            "Healthcare CTI quality pipeline: urgency on vulnerabilities, "
+            "reliability and actionability on indicators."
+        ),
         "created": now, "modified": now,
-    }
-
-    tlp_green = {
-        "type": "marking-definition", "spec_version": "2.1",
-        "id": "marking-definition--34098fce-860f-48ae-8e50-ebd3cc5e41da",
-        "created": "2017-01-20T00:00:00.000Z",
-        "definition_type": "tlp", "definition": {"tlp": "green"},
     }
 
     vuln_objects = [
@@ -995,9 +996,6 @@ def build_stix_bundle(
             "x_kev_listed":       enrichment.get("kev_listed",      False),
             "x_composite_score":  enrichment.get("composite_score", 0.0),
             "x_signal_count":     enrichment.get("x_signal_count",  1),
-            "object_marking_refs": [
-                "marking-definition--34098fce-860f-48ae-8e50-ebd3cc5e41da"
-            ],
             "created_by_ref": pipeline_id,
         }
         for cve, enrichment in sorted(
@@ -1009,7 +1007,7 @@ def build_stix_bundle(
     return {
         "type": "bundle",
         "id":   f"bundle--{uuid.uuid4()}",
-        "objects": [tlp_green, pipeline_identity] + vuln_objects + sanitised_indicators,
+        "objects": [pipeline_identity] + vuln_objects + output_indicators,
     }
 
 
@@ -1060,7 +1058,7 @@ def print_summary(
     raw_obs_count: int,
     promoted_count: int,
     epss_vuln_count: int,
-    sanitised_count: int,
+    indicator_count: int,
     native_by_source: dict[str, int],
     output_by_source: dict[str, int],
     dropped_by_type: dict[str, int],
@@ -1068,9 +1066,11 @@ def print_summary(
     cfg: Config,
     quality_report: dict[str, Any] | None = None,
 ) -> None:
+    # Indicators in vs. indicators out. Vulnerabilities are not sector-filtered,
+    # so they are left out of this figure.
     total_input   = native_count + raw_obs_count
     reduction_pct = (
-        100.0 * (1.0 - sanitised_count / total_input)
+        100.0 * (1.0 - indicator_count / total_input)
         if total_input > 0 else 0.0
     )
     W = 62
@@ -1094,8 +1094,7 @@ def print_summary(
     print("\n  PROCESSING")
     print(f"    Observables promoted           : {promoted_count:>6}")
     print(f"    CVEs above composite threshold : {epss_vuln_count:>6}")
-    print(f"    TLSH-sanitised indicators      : {sanitised_count:>6}")
-    print(f"    Dropped at sanitisation        : {sum(dropped_by_type.values()):>6}")
+    print(f"    Dropped (no STIX pattern)      : {sum(dropped_by_type.values()):>6}")
     for obs_type, n in sorted(dropped_by_type.items()):
         print(f"      {obs_type[:28]:<28} : {n:>6}")
 
@@ -1103,8 +1102,8 @@ def print_summary(
     for src, n in sorted(output_by_source.items()):
         print(f"    From {src[:25]:<25} : {n:>6}")
     print(f"    Vulnerability SDOs (EPSS)      : {epss_vuln_count:>6}")
-    print(f"    Total indicators in bundle     : {sanitised_count:>6}")
-    print(f"    Volume reduction               : {reduction_pct:>5.1f}%")
+    print(f"    Total indicators in bundle     : {indicator_count:>6}")
+    print(f"    Indicator volume reduction     : {reduction_pct:>5.1f}%")
 
     if quality_report:
         qr = quality_report
@@ -1119,17 +1118,26 @@ def print_summary(
             sign = "+" if change >= 0 else ""
             return f"  ({sign}{change:.3f})"
 
+        def _block(title: str, ba: dict[str, Any]) -> None:
+            b, a = ba["before"], ba["after"]
+            print(f"    {title[:30]:<30} : before={b['count']:>5}   after={a['count']:>5}")
+            print(f"      Avg reliability            : "
+                  f"{_fmt(b['reliability']):>6} -> {_fmt(a['reliability']):>6}"
+                  f"{_delta(b['reliability'], a['reliability'])}")
+            print(f"      Avg actionability          : "
+                  f"{_fmt(b['actionability']):>6} -> {_fmt(a['actionability']):>6}"
+                  f"{_delta(b['actionability'], a['actionability'])}")
+
         print("\n  QUALITY: NATIVE INDICATORS, BEFORE vs. AFTER SECTOR FILTER")
-        print(f"    Sample sizes                   : "
-              f"before={qr['before_count']:>4}   after={qr['after_count']:>4}")
-        print(f"    Avg reliability score          : "
-              f"{_fmt(qr['before_avg_admiralty']):>6} -> {_fmt(qr['after_avg_admiralty']):>6}"
-              f"{_delta(qr['before_avg_admiralty'], qr['after_avg_admiralty'])}")
-        print(f"    Avg actionability score        : "
-              f"{_fmt(qr['before_avg_actionability']):>6} -> {_fmt(qr['after_avg_actionability']):>6}"
-              f"{_delta(qr['before_avg_actionability'], qr['after_avg_actionability'])}")
-        print("    (covers native indicators only - vulnerabilities and")
-        print("     promoted observables are not sector-filtered)")
+        _block("All feeds", qr["overall"])
+        for src, ba in qr["by_source"].items():
+            _block(src, ba)
+        print("    Passed the filter because of   :")
+        for reason in ("sector", "threat", "unlabelled"):
+            print(f"      {reason + ' keyword' if reason != 'unlabelled' else 'no labels (soft mode)':<28} : "
+                  f"{qr['after_by_reason'].get(reason, 0):>6}")
+        print("    (native indicators only; vulnerabilities are not sector-filtered,")
+        print("     promoted observables are filtered but have no before score)")
 
     print(f"\n  Output -> {bundle_path}")
     print("=" * W + "\n")
@@ -1170,23 +1178,34 @@ def parse_args() -> argparse.Namespace:
 def _build_quality_comparison(all_scored: list[dict[str, Any]]) -> dict[str, Any]:
     """
     Compare average reliability/actionability scores before vs. after the
-    healthcare-relevance filter, as evidence the filter selects for quality
-    rather than merely reducing volume.
+    sector filter, overall and per source feed. The per-feed split separates
+    a real within-feed change from a change in the mix of feeds, which the
+    overall averages alone cannot.
     """
     def _avg(vals: list[float]) -> float | None:
         vals = [v for v in vals if v is not None]
         return round(sum(vals) / len(vals), 4) if vals else None
 
-    before = all_scored
-    after  = [s for s in all_scored if s["is_relevant"]]
+    def _stats(rows: list[dict[str, Any]]) -> dict[str, Any]:
+        return {
+            "count":         len(rows),
+            "reliability":   _avg([r["admiralty_score"] for r in rows]),
+            "actionability": _avg([r["actionability_score"] for r in rows]),
+        }
 
+    def _before_after(rows: list[dict[str, Any]]) -> dict[str, Any]:
+        return {
+            "before": _stats(rows),
+            "after":  _stats([r for r in rows if r["reason"] is not None]),
+        }
+
+    sources = sorted({r["source"] for r in all_scored})
     return {
-        "before_count": len(before),
-        "after_count":  len(after),
-        "before_avg_admiralty":    _avg([s["admiralty_score"] for s in before]),
-        "after_avg_admiralty":     _avg([s["admiralty_score"] for s in after]),
-        "before_avg_actionability": _avg([s["actionability_score"] for s in before]),
-        "after_avg_actionability":  _avg([s["actionability_score"] for s in after]),
+        "overall":   _before_after(all_scored),
+        "by_source": {s: _before_after([r for r in all_scored if r["source"] == s])
+                      for s in sources},
+        "after_by_reason": dict(Counter(r["reason"] for r in all_scored
+                                        if r["reason"] is not None)),
     }
 
 
@@ -1246,13 +1265,14 @@ def main() -> int:
             )
             adm_grade, adm_score = _get_admiralty(ind, cfg)
             act_score, *_ = _get_actionability(ind, related_types, ap_ids, client, cfg)
-            is_relevant = is_healthcare_relevant(ind, cfg)
+            reason = filter_reason(ind, cfg)
             all_scored.append({
-                "is_relevant": is_relevant,
+                "source": _source_name(ind),
+                "reason": reason,
                 "admiralty_score": adm_score,
                 "actionability_score": act_score,
             })
-            if is_relevant:
+            if reason is not None:
                 native_normalised.append(normalise_indicator(ind, source_tag=_source_name(ind)))
 
         quality_report = _build_quality_comparison(all_scored)
@@ -1277,24 +1297,24 @@ def main() -> int:
 
     epss_scores = enrich_vulnerabilities_with_epss(client, cfg)
 
-    all_indicators                = native_normalised + promoted_normalised
-    sanitised: list[dict]         = []
+    all_indicators                 = native_normalised + promoted_normalised
+    output_indicators: list[dict]  = []
     output_by_source: Counter[str] = Counter()
     dropped_by_type: Counter[str]  = Counter()
 
     for ind in all_indicators:
-        result = sanitise_indicator(ind, cfg, client=client)
+        result = build_output_indicator(ind, cfg, client=client)
         if result is None:
             dropped_by_type[ind.get("_source_observable_type") or "Unknown"] += 1
             continue
-        sanitised.append(result)
+        output_indicators.append(result)
         output_by_source[result.get("x_pipeline_source") or "unknown"] += 1
 
-    if not sanitised and not epss_scores:
+    if not output_indicators and not epss_scores:
         log.warning("Nothing to export. Check connectors have completed ingestion.")
         return 0
 
-    bundle      = build_stix_bundle(sanitised, epss_scores, cfg)
+    bundle      = build_stix_bundle(output_indicators, epss_scores, cfg)
     bundle_path = export_bundle(bundle, cfg)
 
     validate_bundle(bundle_path)
@@ -1304,7 +1324,7 @@ def main() -> int:
         raw_obs_count        = raw_obs_count,
         promoted_count       = len(promoted_normalised),
         epss_vuln_count      = len(epss_scores),
-        sanitised_count      = len(sanitised),
+        indicator_count      = len(output_indicators),
         native_by_source     = dict(native_by_source),
         output_by_source     = dict(output_by_source),
         dropped_by_type      = dict(dropped_by_type),
