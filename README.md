@@ -20,6 +20,7 @@ python healthcare_cti_pipeline.py --limit 2000     # the sample used in the repo
 python healthcare_cti_pipeline.py --threshold 0.25 --strict-filter
 python compare_quality.py --limit 2000             # scores before filtering, as a consistency check
 python label_hand_check.py                         # hand-label the filter sample in output/
+python check_threshold.py --limit 2000             # what the 0.10 urgency threshold removes, by CVSS band
 ```
 
 ## Demo dashboard
