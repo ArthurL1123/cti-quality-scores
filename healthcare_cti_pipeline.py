@@ -589,7 +589,10 @@ def _epss_batch_query(
 def enrich_vulnerabilities_with_epss(
     client: OpenCTIApiClient,
     cfg: Config,
+    stats: dict[str, int] | None = None,
 ) -> dict[str, dict]:
+    """Score vulnerabilities. If `stats` is given, it is filled with the
+    number of CVEs fetched and scored, before the urgency threshold."""
     kev_set = _fetch_kev_set(cfg)
     limit = getattr(cfg, "FETCH_LIMIT", None)
     
@@ -622,6 +625,10 @@ def enrich_vulnerabilities_with_epss(
                 cvss_map[cve] = float(raw_cvss)
             except (TypeError, ValueError):
                 cvss_map[cve] = None
+
+    if stats is not None:
+        stats["fetched"] = len(vulns)
+        stats["scored"]  = len(cve_ids)
 
     if not cve_ids:
         return {}
@@ -1083,7 +1090,8 @@ def main() -> int:
     else:
         log.info("Native indicators skipped (--skip-native).")
 
-    epss_scores = enrich_vulnerabilities_with_epss(client, cfg)
+    vuln_stats: dict[str, int] = {}
+    epss_scores = enrich_vulnerabilities_with_epss(client, cfg, stats=vuln_stats)
 
     all_indicators                 = native_normalised
     output_indicators: list[dict]  = []
@@ -1122,6 +1130,8 @@ def main() -> int:
             "output_by_source":  dict(output_by_source),
             "dropped_by_type":   dict(dropped_by_type),
             "vulnerability_count": len(epss_scores),
+            "vulnerabilities_scored": vuln_stats.get("scored"),
+            "urgency_threshold": cfg.COMPOSITE_THRESHOLD,
             "quality_report":    quality_report,
         }, f, indent=2)
     log.info("Run summary written -> %s", summary_path)

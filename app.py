@@ -190,8 +190,11 @@ with tab_compare:
         c1.metric("Indicators before filter", f"{before_n:,}")
         c2.metric("Indicators after filter", f"{after_n:,}",
                   f"-{100 * (1 - after_n / before_n):.1f}%" if before_n else None, delta_color="off")
-        c3.metric("Vulnerabilities ranked", f"{len(vulns):,}")
-        c4.metric("Confirmed exploited (KEV)", int(vulns["KEV listed"].sum()) if len(vulns) else 0)
+        threshold = summary.get("urgency_threshold", Config.COMPOSITE_THRESHOLD)
+        scored = summary.get("vulnerabilities_scored")
+        c3.metric(f"Vulnerabilities above urgency threshold ({threshold:.2f})", f"{len(vulns):,}",
+                  f"of {scored:,} fetched" if scored else None, delta_color="off")
+        c4.metric("of which confirmed exploited (KEV)", int(vulns["KEV listed"].sum()) if len(vulns) else 0)
 
         feeds = list(qr["by_source"].items())
         counts = pd.DataFrame([{"Feed": name, "Stage": stage.capitalize(), "Indicators": ba[stage]["count"]}
@@ -236,12 +239,15 @@ with tab_compare:
         st.subheader("Why indicators passed the filter")
         cfg = Config()
         reasons = qr.get("after_by_reason", {})
-        names = {"threat": "Threat word only", "sector": "Sector word", "unlabelled": "No labels (soft mode)"}
+        names = {"threat": "Threat word only", "sector": "Sector word",
+                 "unlabelled": "No labels at all (let through by default)"}
         left, right = st.columns([3, 2])
         left.altair_chart(alt.Chart(pd.DataFrame(
             [{"Reason": names[k], "Indicators": reasons.get(k, 0)} for k in names])).mark_bar().encode(
             x="Indicators:Q", y=alt.Y("Reason:N", sort=None, title=None), tooltip=["Reason", "Indicators"],
         ).properties(height=150), width="stretch")
+        left.caption("Indicators with no labels are kept, because a missing label may only mean "
+                     "the source did not describe them.")
         right.markdown("**Sector words** (STIX 2.1, ENISA 2023)  \n" + ", ".join(sorted(cfg.SECTOR_KEYWORDS)))
         right.markdown("**Threat words** (ENISA 2023)  \n" + ", ".join(sorted(cfg.THREAT_KEYWORDS)))
 
@@ -254,6 +260,9 @@ with tab_vulns:
     st.subheader("Urgency = 0.35 EPSS + 0.25 CVSS + 0.40 KEV")
     st.caption("A missing signal has its weight removed and the rest rescaled. "
                "KEV is the only signal based on confirmed exploitation.")
+    threshold = summary.get("urgency_threshold", Config.COMPOSITE_THRESHOLD) if summary else Config.COMPOSITE_THRESHOLD
+    st.caption(f"Vulnerabilities below {threshold:.2f} are not exported, unless KEV listed. "
+               "For a CVE with a CVSS score, 0.10 matches the CVSS v3.1 boundary between Low and Medium severity.")
     f1, f2 = st.columns([1, 2])
     only_kev = f1.checkbox("Only confirmed exploited (KEV)")
     min_score = f2.slider("Minimum urgency", 0.0, 1.0, 0.0, 0.05)
