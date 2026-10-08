@@ -22,6 +22,15 @@ python compare_quality.py --limit 2000             # scores before filtering, as
 python label_hand_check.py                         # hand-label the filter sample in output/
 ```
 
+## Demo dashboard
+
+```bash
+pip install streamlit
+streamlit run app.py
+```
+
+Opens in the browser. It shows any saved run from `output/` (overview by feed, ranked vulnerabilities, indicators with their reliability and actionability, and the filter check), and the sidebar can start a new live run against OpenCTI. Each run also writes a `run_summary_*.json` next to its bundle, which the dashboard reads.
+
 Run `--help` for all flags.
 
 ## Notes

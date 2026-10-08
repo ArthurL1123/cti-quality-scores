@@ -1105,6 +1105,25 @@ def main() -> int:
 
     validate_bundle(bundle_path)
 
+    # Save the run summary next to the bundle so other tools (e.g. the demo
+    # app) can show it without re-running the pipeline.
+    summary_path = bundle_path.with_name(
+        bundle_path.name.replace("healthcare_cti_", "run_summary_")
+    )
+    with open(summary_path, "w", encoding="utf-8") as f:
+        json.dump({
+            "bundle":            bundle_path.name,
+            "fetch_limit":       cfg.FETCH_LIMIT,
+            "strict_filter":     cfg.STRICT_SECTOR_FILTER,
+            "native_count":      native_count,
+            "native_by_source":  dict(native_by_source),
+            "output_by_source":  dict(output_by_source),
+            "dropped_by_type":   dict(dropped_by_type),
+            "vulnerability_count": len(epss_scores),
+            "quality_report":    quality_report,
+        }, f, indent=2)
+    log.info("Run summary written -> %s", summary_path)
+
     print_summary(
         native_count         = native_count,
         epss_vuln_count      = len(epss_scores),
