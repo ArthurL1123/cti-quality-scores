@@ -113,6 +113,10 @@ st.sidebar.caption("Urgency on vulnerabilities. Reliability and actionability on
                    "Each scored separately, never blended.")
 
 runs = list_runs()
+# After a run finishes, select the newest run. This has to happen before the
+# selectbox below is created, so the run handler only sets a flag.
+if st.session_state.pop("select_newest", False) and runs:
+    st.session_state["run_choice"] = runs[0]
 st.sidebar.subheader("Load results")
 if runs:
     choice = st.sidebar.selectbox("Pipeline run", runs, format_func=run_label, key="run_choice")
@@ -154,9 +158,7 @@ with tab_run:
             proc.wait()
         if proc.returncode == 0:
             st.cache_data.clear()
-            new_runs = list_runs()
-            if new_runs:
-                st.session_state["run_choice"] = new_runs[0]
+            st.session_state["select_newest"] = True
             st.session_state["just_finished"] = True
             st.rerun()
         else:

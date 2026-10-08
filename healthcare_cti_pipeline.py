@@ -1060,7 +1060,9 @@ def main() -> int:
         # so we can compare quality before vs. after filtering - proof the
         # filter selects for quality, not just volume reduction.
         all_scored = []
-        for ind in native_indicators:
+        for n, ind in enumerate(native_indicators, 1):
+            if n % 100 == 0 or n == native_count:
+                log.info("Scored %d of %d indicators ...", n, native_count)
             related_types, ap_ids = (
                 _fetch_related_entity_types(client, ind["id"], cfg)
                 if client is not None and ind.get("id") else (set(), set())
