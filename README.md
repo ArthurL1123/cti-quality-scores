@@ -29,7 +29,7 @@ pip install streamlit
 streamlit run app.py
 ```
 
-Opens in the browser. It shows any saved run from `output/` (overview by feed, ranked vulnerabilities, indicators with their reliability and actionability, and the filter check), and the sidebar can start a new live run against OpenCTI. Each run also writes a `run_summary_*.json` next to its bundle, which the dashboard reads.
+Opens in the browser. Tabs: run the pipeline live against OpenCTI, compare indicators before and after the filter (volume and quality, per feed), ranked vulnerabilities with their score breakdown, and indicators with their reliability and actionability. The sidebar loads any saved run from `output/`. Each run also writes a `run_summary_*.json` next to its bundle, which the dashboard reads.
 
 Run `--help` for all flags.
 
