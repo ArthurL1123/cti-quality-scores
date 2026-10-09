@@ -31,3 +31,7 @@ venv/
 
 # Local Claude Code / editor config
 .claude/
+
+# Personal notes (kept locally, not in the repo)
+DEVLOG.md
+JOURNEY.md

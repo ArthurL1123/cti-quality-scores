@@ -44,4 +44,3 @@ Run `--help` for all flags.
 - Bundles contain real indicator values. They are written to `output/`, which is git-ignored. Do not commit them.
 - Indicators are not sorted in the output.
 - Weights can be changed with environment variables, for example `EPSS_WEIGHT` or `KEV_WEIGHT`.
-- `DEVLOG.md` has the history, the decisions and the bugs that were fixed.
