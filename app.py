@@ -7,6 +7,7 @@ compares the indicators before and after the sector filter.
 Usage:
     streamlit run app.py
 """
+import csv
 import json
 import os
 import re
@@ -18,6 +19,9 @@ import altair as alt
 import pandas as pd
 import streamlit as st
 
+import numpy as np
+
+from check_significance import RESAMPLES, SEED, diff_test
 from healthcare_cti_pipeline import Config
 
 OUTPUT_DIR = Path("output")
@@ -95,6 +99,43 @@ def load_bundle(path: str) -> tuple[pd.DataFrame, pd.DataFrame]:
             "Labels": ", ".join(o.get("labels", [])),
         })
     return pd.DataFrame(vulns), pd.DataFrame(inds)
+
+
+@st.cache_data
+def significance_table(path: str) -> dict:
+    """Recompute the significance check from its saved per-indicator scores.
+    Same order of groups and same seed as check_significance.py, so the
+    numbers match its printed output."""
+    with open(path, newline="", encoding="utf-8") as f:
+        rows = list(csv.DictReader(f))
+    rng = np.random.default_rng(SEED)
+    feeds = sorted({r["feed"] for r in rows})
+    groups = [("All feeds", rows)] + [(fd, [r for r in rows if r["feed"] == fd]) for fd in feeds]
+    out = []
+    for dim in ("reliability", "actionability"):
+        for name, grp in groups:
+            passed = np.array([float(r[dim]) for r in grp if r["filter_reason"] != "dropped"])
+            dropped = np.array([float(r[dim]) for r in grp if r["filter_reason"] == "dropped"])
+            t = diff_test(passed, dropped, rng)
+            if t["diff"] is None:
+                verdict = "Not enough data"
+            elif t["ci"][0] == t["ci"][1] == 0:
+                verdict = "No difference possible"
+            elif t["p"] < 0.05 and (t["ci"][0] > 0 or t["ci"][1] < 0):
+                verdict = "Real difference"
+            else:
+                verdict = "Could be chance"
+            out.append({
+                "Dimension": dim.capitalize(), "Feed": name,
+                "Passed": len(passed), "Dropped": len(dropped),
+                "Avg passed": round(passed.mean(), 3) if len(passed) else None,
+                "Avg dropped": round(dropped.mean(), 3) if len(dropped) else None,
+                "Difference": None if t["diff"] is None else round(t["diff"], 3),
+                "95% CI": "n/a" if t["diff"] is None else f"{t['ci'][0]:.3f} to {t['ci'][1]:.3f}",
+                "p-value": None if t["p"] is None else round(t["p"], 4),
+                "Verdict": verdict,
+            })
+    return {"n": len(rows), "table": pd.DataFrame(out)}
 
 
 def run_label(path: Path) -> str:
@@ -250,6 +291,24 @@ with tab_compare:
                      "the source did not describe them.")
         right.markdown("**Sector words** (STIX 2.1, ENISA 2023)  \n" + ", ".join(sorted(cfg.SECTOR_KEYWORDS)))
         right.markdown("**Threat words** (ENISA 2023)  \n" + ", ".join(sorted(cfg.THREAT_KEYWORDS)))
+
+    # ---- Significance check (separate run, read from check_significance.py output) ----
+    st.subheader("Is the difference real? (significance test)")
+    sig_files = sorted(OUTPUT_DIR.glob("significance_scores_*.csv"), key=os.path.getmtime, reverse=True)
+    if not sig_files:
+        st.info("No significance check found. Run `python check_significance.py --limit 5000` to create one.")
+    else:
+        sig_file = sig_files[0]
+        result = significance_table(str(sig_file))
+        ts = sig_file.stem.replace("significance_scores_", "")
+        st.caption(f"Separate check run {ts[:4]}-{ts[4:6]}-{ts[6:8]} {ts[9:11]}:{ts[11:13]} UTC on "
+                   f"{result['n']:,} indicators. Compares indicators that passed the filter with those "
+                   f"that were dropped. 95% bootstrap confidence interval and permutation test p-value "
+                   f"({RESAMPLES:,} resamples).")
+        st.dataframe(result["table"], hide_index=True, width="stretch")
+        st.info("**How to read this.** A p-value below 0.05, with a confidence interval that does not "
+                "include 0, means the difference is very unlikely to be chance. Reliability cannot differ "
+                "inside a feed, because every indicator from a feed has the same grade.")
 
 
 # ==============================================================================
