@@ -21,6 +21,8 @@ python healthcare_cti_pipeline.py --threshold 0.25 --strict-filter
 python compare_quality.py --limit 2000             # scores before filtering, as a consistency check
 python label_hand_check.py                         # hand-label the filter sample in output/
 python check_threshold.py --limit 2000             # what the 0.10 urgency threshold removes, by CVSS band
+python analyse_bundle.py output/healthcare_cti_<ts>.json   # Chapter 5 figures from one bundle, incl. weight sensitivity
+python healthcare_tag_scan.py                      # share of indicators in reports linked to the Healthcare sector
 ```
 
 ## Demo dashboard
