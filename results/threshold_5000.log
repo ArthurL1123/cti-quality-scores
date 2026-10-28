@@ -1,0 +1,16 @@
+Vulnerabilities scored: 5000
+
+Threshold   kept          dropped
+  0.05      3044 (60.9%)    1956
+  0.10      2894 (57.9%)    2106
+  0.15      2130 (42.6%)    2870
+  0.20       947 (18.9%)    4053
+  0.25       263 ( 5.3%)    4737
+
+At the pipeline threshold (0.10):
+  Dropped by CVSS band: {'no CVSS': 2052, 'Low': 54}
+  Kept by CVSS band:    {'Medium': 1273, 'High': 1113, 'no CVSS': 94, 'Critical': 413, 'Low': 1}
+  KEV listed dropped:   0
+  Medium or higher dropped: 0
+  Low kept:             1
+  Dropped with no CVSS: 2052, EPSS median 0.0162, max 0.2132

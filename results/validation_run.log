@@ -1,0 +1,116 @@
+Loaded 228 warninglists: {'harmless': 182, 'hosting': 39, 'large': 7}
+Fetched 67353 indicators; 1000 sampled for actionability. Checking...
+  checked 2000 of 67353
+  checked 4000 of 67353
+  checked 6000 of 67353
+  checked 8000 of 67353
+  checked 10000 of 67353
+  checked 12000 of 67353
+  checked 14000 of 67353
+  checked 16000 of 67353
+  checked 18000 of 67353
+  checked 20000 of 67353
+  checked 22000 of 67353
+  checked 24000 of 67353
+  checked 26000 of 67353
+  checked 28000 of 67353
+  checked 30000 of 67353
+  checked 32000 of 67353
+  checked 34000 of 67353
+  checked 36000 of 67353
+  checked 38000 of 67353
+  checked 40000 of 67353
+  checked 42000 of 67353
+  checked 44000 of 67353
+  checked 46000 of 67353
+  checked 48000 of 67353
+  checked 50000 of 67353
+  checked 52000 of 67353
+  checked 54000 of 67353
+  checked 56000 of 67353
+  checked 58000 of 67353
+  checked 60000 of 67353
+  checked 62000 of 67353
+  checked 64000 of 67353
+  checked 66000 of 67353
+  checked 67353 of 67353
+
+Run 20261025T085552Z, 67353 indicators. Per-indicator results saved to output\validation_indicators_20261025T085552Z.csv
+
+Indicator types per feed:
+  AlienVault                   grade B: {'domain-name': 18001, 'file': 12155, 'hostname': 5666, 'url': 2805, 'ipv4-addr': 895, 'email-addr': 400, 'complex/other': 46, 'cryptocurrency-wallet': 13}
+  Threat Fox | Abuse.ch        grade C: {'domain-name': 10742, 'file': 8052, 'ipv4-addr': 6044, 'url': 2534}
+
+== 1. RELIABILITY: share of each feed's indicators on a warninglist
+  AlienVault                   grade B (0.85)
+      harmless lists             372/39981   0.9% [95% CI  0.8%- 1.0%]
+      hosting lists              360/39981   0.9% [95% CI  0.8%- 1.0%]
+      large popularity lists    1691/39981   4.2% [95% CI  4.0%- 4.4%]
+  Threat Fox | Abuse.ch        grade C (0.7)
+      harmless lists             792/27372   2.9% [95% CI  2.7%- 3.1%]
+      hosting lists             2931/27372  10.7% [95% CI 10.3%-11.1%]
+      large popularity lists     869/27372   3.2% [95% CI  3.0%- 3.4%]
+
+== 2. ACTIONABILITY: share usable as-is, by actionability score (sampled indicators)
+  All feeds
+      score 1.0     201/204    98.5% [95% CI 95.8%-99.5%]
+      score 0.7     185/193    95.9% [95% CI 92.0%-97.9%]
+      score 0.3     588/603    97.5% [95% CI 95.9%-98.5%]
+  AlienVault
+      score 1.0     200/203    98.5% [95% CI 95.7%-99.5%]
+      score 0.7     184/192    95.8% [95% CI 92.0%-97.9%]
+      score 0.3     102/105    97.1% [95% CI 91.9%-99.0%]
+  Threat Fox | Abuse.ch
+      score 1.0       1/1     100.0% [95% CI 20.7%-100.0%]
+      score 0.7       1/1     100.0% [95% CI 20.7%-100.0%]
+      score 0.3     486/498    97.6% [95% CI 95.8%-98.6%]
+  Why not usable (sampled indicators, all feeds):
+      on a harmless warninglist    18
+      not one blockable value      8
+
+== Hits per warninglist (all feeds)
+  datacenter-ipv4                          hosting    3034  {'Threat Fox | Abuse.ch': 2903, 'AlienVault': 131}
+  tranco                                   large      2334  {'AlienVault': 1513, 'Threat Fox | Abuse.ch': 821}
+  tranco10k                                harmless   1044  {'Threat Fox | Abuse.ch': 681, 'AlienVault': 363}
+  digitalocean                             hosting     463  {'Threat Fox | Abuse.ch': 462, 'AlienVault': 1}
+  tencent-cloud                            hosting     306  {'Threat Fox | Abuse.ch': 305, 'AlienVault': 1}
+  cloudflare-top1m                         large       291  {'AlienVault': 241, 'Threat Fox | Abuse.ch': 50}
+  alibaba-cloud                            hosting     230  {'Threat Fox | Abuse.ch': 217, 'AlienVault': 13}
+  disposable-email                         hosting     191  {'AlienVault': 191}
+  amazon-aws                               hosting     163  {'Threat Fox | Abuse.ch': 163}
+  linode                                   hosting     115  {'Threat Fox | Abuse.ch': 114, 'AlienVault': 1}
+  cloudflare-top500k                       large       103  {'AlienVault': 76, 'Threat Fox | Abuse.ch': 27}
+  akamai                                   harmless     97  {'Threat Fox | Abuse.ch': 96, 'AlienVault': 1}
+  hetzner                                  hosting      95  {'Threat Fox | Abuse.ch': 90, 'AlienVault': 5}
+  vultr                                    hosting      91  {'Threat Fox | Abuse.ch': 91}
+  microsoft-azure                          hosting      83  {'Threat Fox | Abuse.ch': 83}
+  vpn-ipv4                                 hosting      74  {'Threat Fox | Abuse.ch': 61, 'AlienVault': 13}
+  google-gcp                               hosting      69  {'Threat Fox | Abuse.ch': 69}
+  github                                   hosting      51  {'Threat Fox | Abuse.ch': 51}
+  alexa                                    harmless     50  {'AlienVault': 38, 'Threat Fox | Abuse.ch': 12}
+  oracle-oci                               hosting      49  {'Threat Fox | Abuse.ch': 49}
+  leaseweb                                 hosting      47  {'AlienVault': 10, 'Threat Fox | Abuse.ch': 37}
+  cloudflare-top200k                       large        35  {'AlienVault': 23, 'Threat Fox | Abuse.ch': 12}
+  cisco_top1m                              large        35  {'AlienVault': 20, 'Threat Fox | Abuse.ch': 15}
+  personal-email-domains                   hosting      30  {'AlienVault': 30}
+  cloudflare-top100k                       large        25  {'AlienVault': 15, 'Threat Fox | Abuse.ch': 10}
+  google-chrome-crux-1million              large        21  {'AlienVault': 6, 'Threat Fox | Abuse.ch': 15}
+  google                                   harmless     16  {'Threat Fox | Abuse.ch': 14, 'AlienVault': 2}
+  cloudflare-top50k                        harmless     15  {'AlienVault': 8, 'Threat Fox | Abuse.ch': 7}
+  huawei-cloud                             hosting      12  {'Threat Fox | Abuse.ch': 12}
+  digitalside                              harmless     12  {'Threat Fox | Abuse.ch': 9, 'AlienVault': 3}
+  scaleway                                 hosting      11  {'Threat Fox | Abuse.ch': 11}
+  cloudflare-top20k                        harmless      8  {'Threat Fox | Abuse.ch': 6, 'AlienVault': 2}
+  parking-domain                           hosting       5  {'Threat Fox | Abuse.ch': 5}
+  godaddy                                  hosting       5  {'Threat Fox | Abuse.ch': 5}
+  cloudflare-top10k                        harmless      4  {'Threat Fox | Abuse.ch': 2, 'AlienVault': 2}
+  cloudflare                               harmless      2  {'Threat Fox | Abuse.ch': 2}
+  cloudflare-top5k                         harmless      2  {'Threat Fox | Abuse.ch': 2}
+  rfc6598                                  harmless      2  {'Threat Fox | Abuse.ch': 2}
+  odin-scanning                            harmless      1  {'Threat Fox | Abuse.ch': 1}
+  majestic_million                         harmless      1  {'Threat Fox | Abuse.ch': 1}
+  microsoft-azure-us-gov                   hosting       1  {'Threat Fox | Abuse.ch': 1}
+  gcore                                    harmless      1  {'Threat Fox | Abuse.ch': 1}
+  cisco_top20k                             harmless      1  {'Threat Fox | Abuse.ch': 1}
+  sinkholes                                harmless      1  {'Threat Fox | Abuse.ch': 1}
+  ibm-cloud                                hosting       1  {'Threat Fox | Abuse.ch': 1}

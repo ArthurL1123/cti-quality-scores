@@ -35,3 +35,9 @@ venv/
 # Personal notes (kept locally, not in the repo)
 DEVLOG.md
 JOURNEY.md
+
+# Old scripts not used in the final report (kept locally)
+archive/
+
+# Result logs are part of the repo
+!results/*.log

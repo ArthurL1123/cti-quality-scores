@@ -375,6 +375,7 @@ with tab_inds:
     tiers = sorted(inds["Actionability"].dropna().unique()) if len(inds) else []
     tier = g2.multiselect("Actionability", tiers, default=tiers)
     view = inds[inds["Feed"].isin(chosen) & inds["Actionability"].isin(tier)] if len(inds) else inds
+    st.caption(f"Showing {len(view):,} of {len(inds):,} indicators")
 
     left, right = st.columns([3, 2])
     with left:

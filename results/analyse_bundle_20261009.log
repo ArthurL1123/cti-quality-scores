@@ -1,0 +1,33 @@
+bundle: output/healthcare_cti_20261009T042040Z.json
+vulnerabilities=2894 indicators=569
+recompute mismatches vs pipeline: 0
+score bins: {'0.0-0.2': (1947, 67.3), '0.2-0.4': (891, 30.8), '0.4-0.6': (35, 1.2), '0.6-0.8': (9, 0.3), '0.8-1.0': (12, 0.4)}
+signal_count: {3: 2800, 2: 94}
+missing (epss_missing, cvss_missing): {(False, False): 2800, (False, True): 94}
+KEV=25 (0.9%) avg=0.7902 nonKEV avg=0.1868 KEV>0.5: 25 min KEV=0.545
+
+sensitivity: top_bin=12 n_kev=25
+  Original (0.35 / 0.25 / 0.40)      spearman=1.000 top12=12 top25=25 KEVin25=23
+  Equal (1/3 each)                   spearman=0.995 top12=12 top25=22 KEVin25=20
+  CVSS heavy (0.20 / 0.50 / 0.30)    spearman=0.940 top12=11 top25=23 KEVin25=21
+  EPSS heavy (0.50 / 0.20 / 0.30)    spearman=0.968 top12=12 top25=18 KEVin25=16
+  KEV light (0.40 / 0.40 / 0.20)     spearman=0.998 top12=12 top25=16 KEVin25=14
+  KEV heavy (0.20 / 0.20 / 0.60)     spearman=0.984 top12=12 top25=23 KEVin25=25
+
+missing CVSS, highest: CVE-2024-13160 EPSS=0.91247 CVSS=None KEV=True score=0.9592
+top of ranking: CVE-2023-22527 EPSS=0.99984 CVSS=9.8 KEV=True score=0.9949
+high CVSS, not KEV, lowest score: CVE-2025-13396 EPSS=0.00323 CVSS=9.8 KEV=False score=0.2461
+KEV with low EPSS: ['CVE-2026-21519 EPSS=0.02497 CVSS=None KEV=True score=0.545', 'CVE-2025-24200 EPSS=0.0442 CVSS=None KEV=True score=0.554', 'CVE-2022-2856 EPSS=0.0453 CVSS=6.5 KEV=True score=0.5784']
+
+indicators by feed: {'AlienVault': 550, 'Threat Fox | Abuse.ch': 19}
+grades: {('AlienVault', 'B'): 550, ('Threat Fox | Abuse.ch', 'C'): 19}
+signal combos (ioc,ttp,mit): {(True, True, True): 241, (True, True, False): 264, (True, False, False): 64}
+actionability dist: {0.3: (64, 11.2), 0.7: (264, 46.4), 1.0: (241, 42.4)}
+  AlienVault: n=550 ttp=505 (91.8%) mit=241 (43.8%)
+  Threat Fox | Abuse.ch: n=19 ttp=0 (0.0%) mit=0 (0.0%)
+overall ttp=505 (88.8%) mit=241 (42.4%)
+entropy weights: {'ioc': 0.0, 'ttp': 0.122, 'mit': 0.878}
+B with 0.3: 45 [('0026cf7b', 'AlienVault', 'B', 0.3), ('006dcc5d', 'AlienVault', 'B', 0.3), ('00a7a8fe', 'AlienVault', 'B', 0.3)]
+full 1.0: 241 [('00000b96', 'AlienVault', 'B', 1.0), ('00072a37', 'AlienVault', 'B', 1.0), ('000d41d0', 'AlienVault', 'B', 1.0)]
+grade C: 19 [('0040bc74', 'Threat Fox', 'C', 0.3), ('006389e1', 'Threat Fox', 'C', 0.3), ('0137d37e', 'Threat Fox', 'C', 0.3)]
+0.7 tier: 264 [('00014578', 'AlienVault', 'B', 0.7), ('00039506', 'AlienVault', 'B', 0.7), ('000863c9', 'AlienVault', 'B', 0.7)]

@@ -1,0 +1,690 @@
+{
+  "30": {
+    "budget": 0.1,
+    "positives_total": 160,
+    "stats": {
+      "Urgency score (pipeline)": {
+        "mean": 0.5171512697828488,
+        "min": 0.16666666666666666,
+        "max": 0.7,
+        "pooled": 0.53125
+      },
+      "CVSS only": {
+        "mean": 0.32143892051457434,
+        "min": 0.0,
+        "max": 0.6,
+        "pooled": 0.34183491762088186
+      },
+      "EPSS only": {
+        "mean": 0.41775733038890933,
+        "min": 0.16666666666666666,
+        "max": 0.625,
+        "pooled": 0.4375
+      },
+      "Random": {
+        "mean": 0.09999967829887581,
+        "min": 0.09999852699647216,
+        "max": 0.10000181491497125,
+        "pooled": 0.09999985356845527
+      },
+      "vs CVSS only": {
+        "higher": 10,
+        "equal": 3,
+        "lower": 0
+      },
+      "vs EPSS only": {
+        "higher": 7,
+        "equal": 6,
+        "lower": 0
+      }
+    },
+    "per_date": [
+      {
+        "date": "2025-04-01",
+        "positives": 6,
+        "hits": {
+          "Urgency score (pipeline)": 1.0,
+          "CVSS only": 0.48896353166986567,
+          "EPSS only": 1.0,
+          "Random": 0.599991161978833
+        }
+      },
+      {
+        "date": "2025-05-01",
+        "positives": 10,
+        "hits": {
+          "Urgency score (pipeline)": 6.0,
+          "CVSS only": 6.0,
+          "EPSS only": 3.0,
+          "Random": 1.0000181491497124
+        }
+      },
+      {
+        "date": "2025-06-01",
+        "positives": 15,
+        "hits": {
+          "Urgency score (pipeline)": 10.0,
+          "CVSS only": 7.0,
+          "EPSS only": 9.0,
+          "Random": 1.4999946315642547
+        }
+      },
+      {
+        "date": "2025-07-01",
+        "positives": 10,
+        "hits": {
+          "Urgency score (pipeline)": 7.0,
+          "CVSS only": 4.0,
+          "EPSS only": 5.0,
+          "Random": 0.9999964674421808
+        }
+      },
+      {
+        "date": "2025-08-01",
+        "positives": 8,
+        "hits": {
+          "Urgency score (pipeline)": 5.0,
+          "CVSS only": 0.0,
+          "EPSS only": 5.0,
+          "Random": 0.7999916327619206
+        }
+      },
+      {
+        "date": "2025-09-01",
+        "positives": 8,
+        "hits": {
+          "Urgency score (pipeline)": 3.0,
+          "CVSS only": 0.0,
+          "EPSS only": 3.0,
+          "Random": 0.7999889831442106
+        }
+      },
+      {
+        "date": "2025-10-01",
+        "positives": 25,
+        "hits": {
+          "Urgency score (pipeline)": 15.0,
+          "CVSS only": 9.204623287671232,
+          "EPSS only": 13.0,
+          "Random": 2.4999915228662206
+        }
+      },
+      {
+        "date": "2025-11-01",
+        "positives": 6,
+        "hits": {
+          "Urgency score (pipeline)": 3.0,
+          "CVSS only": 3.0,
+          "EPSS only": 1.0,
+          "Random": 0.5999939799935118
+        }
+      },
+      {
+        "date": "2025-12-01",
+        "positives": 6,
+        "hits": {
+          "Urgency score (pipeline)": 3.0,
+          "CVSS only": 2.0,
+          "EPSS only": 3.0,
+          "Random": 0.5999980133831754
+        }
+      },
+      {
+        "date": "2026-01-01",
+        "positives": 10,
+        "hits": {
+          "Urgency score (pipeline)": 5.0,
+          "CVSS only": 3.0,
+          "EPSS only": 5.0,
+          "Random": 1.0
+        }
+      },
+      {
+        "date": "2026-02-01",
+        "positives": 15,
+        "hits": {
+          "Urgency score (pipeline)": 10.0,
+          "CVSS only": 8.0,
+          "EPSS only": 6.0,
+          "Random": 1.4999855645696798
+        }
+      },
+      {
+        "date": "2026-03-01",
+        "positives": 19,
+        "hits": {
+          "Urgency score (pipeline)": 7.0,
+          "CVSS only": 7.0,
+          "EPSS only": 7.0,
+          "Random": 1.9000060064047242
+        }
+      },
+      {
+        "date": "2026-04-01",
+        "positives": 22,
+        "hits": {
+          "Urgency score (pipeline)": 10.0,
+          "CVSS only": 5.0,
+          "EPSS only": 9.0,
+          "Random": 2.200020457694418
+        }
+      }
+    ]
+  },
+  "180": {
+    "budget": 0.1,
+    "positives_total": 677,
+    "stats": {
+      "Urgency score (pipeline)": {
+        "mean": 0.5714338194121481,
+        "min": 0.5166666666666667,
+        "max": 0.7115384615384616,
+        "pooled": 0.5701624815361891
+      },
+      "CVSS only": {
+        "mean": 0.31203400745274723,
+        "min": 0.2,
+        "max": 0.40384615384615385,
+        "pooled": 0.31432402437315565
+      },
+      "EPSS only": {
+        "mean": 0.5253490712005061,
+        "min": 0.4230769230769231,
+        "max": 0.66,
+        "pooled": 0.5214180206794683
+      },
+      "Random": {
+        "mean": 0.09999967829887581,
+        "min": 0.09999852699647216,
+        "max": 0.10000181491497123,
+        "pooled": 0.09999970795898858
+      },
+      "vs CVSS only": {
+        "higher": 13,
+        "equal": 0,
+        "lower": 0
+      },
+      "vs EPSS only": {
+        "higher": 10,
+        "equal": 2,
+        "lower": 1
+      }
+    },
+    "per_date": [
+      {
+        "date": "2025-04-01",
+        "positives": 37,
+        "hits": {
+          "Urgency score (pipeline)": 21.0,
+          "CVSS only": 11.488963531669866,
+          "EPSS only": 20.0,
+          "Random": 3.6999454988694698
+        }
+      },
+      {
+        "date": "2025-05-01",
+        "positives": 52,
+        "hits": {
+          "Urgency score (pipeline)": 37.0,
+          "CVSS only": 21.0,
+          "EPSS only": 32.0,
+          "Random": 5.200094375578504
+        }
+      },
+      {
+        "date": "2025-06-01",
+        "positives": 50,
+        "hits": {
+          "Urgency score (pipeline)": 33.0,
+          "CVSS only": 17.0,
+          "EPSS only": 33.0,
+          "Random": 4.999982105214182
+        }
+      },
+      {
+        "date": "2025-07-01",
+        "positives": 47,
+        "hits": {
+          "Urgency score (pipeline)": 28.0,
+          "CVSS only": 12.0,
+          "EPSS only": 27.0,
+          "Random": 4.69998339697825
+        }
+      },
+      {
+        "date": "2025-08-01",
+        "positives": 45,
+        "hits": {
+          "Urgency score (pipeline)": 24.0,
+          "CVSS only": 9.0,
+          "EPSS only": 26.0,
+          "Random": 4.499952934285804
+        }
+      },
+      {
+        "date": "2025-09-01",
+        "positives": 51,
+        "hits": {
+          "Urgency score (pipeline)": 29.0,
+          "CVSS only": 14.10377768128528,
+          "EPSS only": 27.0,
+          "Random": 5.099929767544343
+        }
+      },
+      {
+        "date": "2025-10-01",
+        "positives": 59,
+        "hits": {
+          "Urgency score (pipeline)": 32.0,
+          "CVSS only": 22.204623287671232,
+          "EPSS only": 27.0,
+          "Random": 5.899979993964281
+        }
+      },
+      {
+        "date": "2025-11-01",
+        "positives": 52,
+        "hits": {
+          "Urgency score (pipeline)": 28.0,
+          "CVSS only": 18.0,
+          "EPSS only": 22.0,
+          "Random": 5.199947826610435
+        }
+      },
+      {
+        "date": "2025-12-01",
+        "positives": 56,
+        "hits": {
+          "Urgency score (pipeline)": 32.0,
+          "CVSS only": 18.0,
+          "EPSS only": 27.0,
+          "Random": 5.5999814582429694
+        }
+      },
+      {
+        "date": "2026-01-01",
+        "positives": 61,
+        "hits": {
+          "Urgency score (pipeline)": 33.0,
+          "CVSS only": 18.0,
+          "EPSS only": 30.0,
+          "Random": 6.1
+        }
+      },
+      {
+        "date": "2026-02-01",
+        "positives": 60,
+        "hits": {
+          "Urgency score (pipeline)": 33.0,
+          "CVSS only": 21.0,
+          "EPSS only": 27.0,
+          "Random": 5.999942258278719
+        }
+      },
+      {
+        "date": "2026-03-01",
+        "positives": 60,
+        "hits": {
+          "Urgency score (pipeline)": 31.0,
+          "CVSS only": 17.0,
+          "EPSS only": 31.0,
+          "Random": 6.000018967593866
+        }
+      },
+      {
+        "date": "2026-04-01",
+        "positives": 47,
+        "hits": {
+          "Urgency score (pipeline)": 25.0,
+          "CVSS only": 14.0,
+          "EPSS only": 24.0,
+          "Random": 4.700043705074438
+        }
+      }
+    ]
+  },
+  "30@15.5%": {
+    "budget": 0.155,
+    "positives_total": 160,
+    "stats": {
+      "Urgency score (pipeline)": {
+        "mean": 0.5920592565329407,
+        "min": 0.16666666666666666,
+        "max": 0.8,
+        "pooled": 0.625
+      },
+      "CVSS only": {
+        "mean": 0.4696192926080158,
+        "min": 0.16666666666666666,
+        "max": 0.6666666666666666,
+        "pooled": 0.47792254406839624
+      },
+      "EPSS only": {
+        "mean": 0.4899368175683965,
+        "min": 0.16666666666666666,
+        "max": 0.75,
+        "pooled": 0.49375
+      },
+      "Random": {
+        "mean": 0.1550003138420137,
+        "min": 0.1549984448316572,
+        "max": 0.15500157198822953,
+        "pooled": 0.1550003967466697
+      },
+      "vs CVSS only": {
+        "higher": 10,
+        "equal": 2,
+        "lower": 1
+      },
+      "vs EPSS only": {
+        "higher": 8,
+        "equal": 4,
+        "lower": 1
+      }
+    },
+    "per_date": [
+      {
+        "date": "2025-04-01",
+        "positives": 6,
+        "hits": {
+          "Urgency score (pipeline)": 1.0,
+          "CVSS only": 1.0,
+          "EPSS only": 1.0,
+          "Random": 0.9300028723568793
+        }
+      },
+      {
+        "date": "2025-05-01",
+        "positives": 10,
+        "hits": {
+          "Urgency score (pipeline)": 7.0,
+          "CVSS only": 6.0,
+          "EPSS only": 5.0,
+          "Random": 1.5500099820323419
+        }
+      },
+      {
+        "date": "2025-06-01",
+        "positives": 15,
+        "hits": {
+          "Urgency score (pipeline)": 11.0,
+          "CVSS only": 8.346412388587362,
+          "EPSS only": 9.0,
+          "Random": 2.325015836885448
+        }
+      },
+      {
+        "date": "2025-07-01",
+        "positives": 10,
+        "hits": {
+          "Urgency score (pipeline)": 7.0,
+          "CVSS only": 4.6624284806102985,
+          "EPSS only": 5.0,
+          "Random": 1.5500157198822953
+        }
+      },
+      {
+        "date": "2025-08-01",
+        "positives": 8,
+        "hits": {
+          "Urgency score (pipeline)": 6.0,
+          "CVSS only": 2.607433049665849,
+          "EPSS only": 6.0,
+          "Random": 1.2399967925587363
+        }
+      },
+      {
+        "date": "2025-09-01",
+        "positives": 8,
+        "hits": {
+          "Urgency score (pipeline)": 3.0,
+          "CVSS only": 1.6436061684460261,
+          "EPSS only": 3.0,
+          "Random": 1.240002203371158
+        }
+      },
+      {
+        "date": "2025-10-01",
+        "positives": 25,
+        "hits": {
+          "Urgency score (pipeline)": 20.0,
+          "CVSS only": 14.868284228769497,
+          "EPSS only": 15.0,
+          "Random": 3.8749826218757524
+        }
+      },
+      {
+        "date": "2025-11-01",
+        "positives": 6,
+        "hits": {
+          "Urgency score (pipeline)": 4.0,
+          "CVSS only": 4.0,
+          "EPSS only": 3.0,
+          "Random": 0.9299906689899432
+        }
+      },
+      {
+        "date": "2025-12-01",
+        "positives": 6,
+        "hits": {
+          "Urgency score (pipeline)": 3.0,
+          "CVSS only": 3.9351826421312825,
+          "EPSS only": 3.0,
+          "Random": 0.9299949341270971
+        }
+      },
+      {
+        "date": "2026-01-01",
+        "positives": 10,
+        "hits": {
+          "Urgency score (pipeline)": 5.0,
+          "CVSS only": 4.940850527074511,
+          "EPSS only": 7.0,
+          "Random": 1.5500081314034801
+        }
+      },
+      {
+        "date": "2026-02-01",
+        "positives": 15,
+        "hits": {
+          "Urgency score (pipeline)": 11.0,
+          "CVSS only": 9.288461538461538,
+          "EPSS only": 6.0,
+          "Random": 2.325018525468911
+        }
+      },
+      {
+        "date": "2026-03-01",
+        "positives": 19,
+        "hits": {
+          "Urgency score (pipeline)": 10.0,
+          "CVSS only": 8.915368457903028,
+          "EPSS only": 7.0,
+          "Random": 2.945000300320236
+        }
+      },
+      {
+        "date": "2026-04-01",
+        "positives": 22,
+        "hits": {
+          "Urgency score (pipeline)": 12.0,
+          "CVSS only": 6.259579569294002,
+          "EPSS only": 9.0,
+          "Random": 3.410024890194875
+        }
+      }
+    ]
+  },
+  "180@15.5%": {
+    "budget": 0.155,
+    "positives_total": 677,
+    "stats": {
+      "Urgency score (pipeline)": {
+        "mean": 0.6637579298802243,
+        "min": 0.5961538461538461,
+        "max": 0.8269230769230769,
+        "pooled": 0.6617429837518464
+      },
+      "CVSS only": {
+        "mean": 0.4803529628405348,
+        "min": 0.41102456386020186,
+        "max": 0.5657844490791059,
+        "pooled": 0.4809346053551591
+      },
+      "EPSS only": {
+        "mean": 0.5738616813688459,
+        "min": 0.4666666666666667,
+        "max": 0.7,
+        "pooled": 0.568685376661743
+      },
+      "Random": {
+        "mean": 0.1550003138420137,
+        "min": 0.15499844483165723,
+        "max": 0.15500157198822953,
+        "pooled": 0.15500029684025243
+      },
+      "vs CVSS only": {
+        "higher": 13,
+        "equal": 0,
+        "lower": 0
+      },
+      "vs EPSS only": {
+        "higher": 12,
+        "equal": 0,
+        "lower": 1
+      }
+    },
+    "per_date": [
+      {
+        "date": "2025-04-01",
+        "positives": 37,
+        "hits": {
+          "Urgency score (pipeline)": 25.0,
+          "CVSS only": 17.530143833520352,
+          "EPSS only": 23.0,
+          "Random": 5.735017712867422
+        }
+      },
+      {
+        "date": "2025-05-01",
+        "positives": 52,
+        "hits": {
+          "Urgency score (pipeline)": 43.0,
+          "CVSS only": 29.23253708825748,
+          "EPSS only": 36.0,
+          "Random": 8.060051906568177
+        }
+      },
+      {
+        "date": "2025-06-01",
+        "positives": 50,
+        "hits": {
+          "Urgency score (pipeline)": 39.0,
+          "CVSS only": 25.751680525817854,
+          "EPSS only": 35.0,
+          "Random": 7.750052789618161
+        }
+      },
+      {
+        "date": "2025-07-01",
+        "positives": 47,
+        "hits": {
+          "Urgency score (pipeline)": 33.0,
+          "CVSS only": 22.93642720915448,
+          "EPSS only": 29.0,
+          "Random": 7.285073883446787
+        }
+      },
+      {
+        "date": "2025-08-01",
+        "positives": 45,
+        "hits": {
+          "Urgency score (pipeline)": 28.0,
+          "CVSS only": 19.777873936246934,
+          "EPSS only": 29.0,
+          "Random": 6.974981958142892
+        }
+      },
+      {
+        "date": "2025-09-01",
+        "positives": 51,
+        "hits": {
+          "Urgency score (pipeline)": 31.0,
+          "CVSS only": 24.366880189798337,
+          "EPSS only": 29.0,
+          "Random": 7.905014046491131
+        }
+      },
+      {
+        "date": "2025-10-01",
+        "positives": 59,
+        "hits": {
+          "Urgency score (pipeline)": 40.0,
+          "CVSS only": 33.38128249566724,
+          "EPSS only": 31.0,
+          "Random": 9.144958987626776
+        }
+      },
+      {
+        "date": "2025-11-01",
+        "positives": 52,
+        "hits": {
+          "Urgency score (pipeline)": 31.0,
+          "CVSS only": 24.820446457457134,
+          "EPSS only": 26.0,
+          "Random": 8.059919131246176
+        }
+      },
+      {
+        "date": "2025-12-01",
+        "positives": 56,
+        "hits": {
+          "Urgency score (pipeline)": 34.0,
+          "CVSS only": 27.030852329945986,
+          "EPSS only": 29.0,
+          "Random": 8.679952718519573
+        }
+      },
+      {
+        "date": "2026-01-01",
+        "positives": 61,
+        "hits": {
+          "Urgency score (pipeline)": 37.0,
+          "CVSS only": 27.704252635372555,
+          "EPSS only": 33.0,
+          "Random": 9.45504960156123
+        }
+      },
+      {
+        "date": "2026-02-01",
+        "positives": 60,
+        "hits": {
+          "Urgency score (pipeline)": 39.0,
+          "CVSS only": 28.73076923076923,
+          "EPSS only": 28.0,
+          "Random": 9.300074101875644
+        }
+      },
+      {
+        "date": "2026-03-01",
+        "positives": 60,
+        "hits": {
+          "Urgency score (pipeline)": 37.0,
+          "CVSS only": 24.661473831612113,
+          "EPSS only": 32.0,
+          "Random": 9.300000948379694
+        }
+      },
+      {
+        "date": "2026-04-01",
+        "positives": 47,
+        "hits": {
+          "Urgency score (pipeline)": 31.0,
+          "CVSS only": 19.66810806182301,
+          "EPSS only": 25.0,
+          "Random": 7.285053174507233
+        }
+      }
+    ]
+  }
+}

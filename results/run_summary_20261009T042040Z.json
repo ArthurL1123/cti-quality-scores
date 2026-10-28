@@ -1,0 +1,63 @@
+{
+  "bundle": "healthcare_cti_20261009T042040Z.json",
+  "fetch_limit": 5000,
+  "strict_filter": false,
+  "native_count": 5000,
+  "native_by_source": {
+    "AlienVault": 3057,
+    "Threat Fox | Abuse.ch": 1943
+  },
+  "output_by_source": {
+    "AlienVault": 550,
+    "Threat Fox | Abuse.ch": 19
+  },
+  "dropped_by_type": {},
+  "vulnerability_count": 2894,
+  "vulnerabilities_scored": 5000,
+  "urgency_threshold": 0.1,
+  "quality_report": {
+    "overall": {
+      "before": {
+        "count": 5000,
+        "reliability": 0.7917,
+        "actionability": 0.5708
+      },
+      "after": {
+        "count": 569,
+        "reliability": 0.845,
+        "actionability": 0.7821
+      }
+    },
+    "by_source": {
+      "AlienVault": {
+        "before": {
+          "count": 3057,
+          "reliability": 0.85,
+          "actionability": 0.7424
+        },
+        "after": {
+          "count": 550,
+          "reliability": 0.85,
+          "actionability": 0.7987
+        }
+      },
+      "Threat Fox | Abuse.ch": {
+        "before": {
+          "count": 1943,
+          "reliability": 0.7,
+          "actionability": 0.3009
+        },
+        "after": {
+          "count": 19,
+          "reliability": 0.7,
+          "actionability": 0.3
+        }
+      }
+    },
+    "after_by_reason": {
+      "threat": 562,
+      "sector": 4,
+      "unlabelled": 3
+    }
+  }
+}
